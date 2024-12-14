@@ -1,4 +1,4 @@
-import basicTwo as basic
+import basic
 
 while True:
     text = input("basic > ")

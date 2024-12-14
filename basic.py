@@ -1,4 +1,10 @@
 #######################################
+# IMPORTS
+#######################################
+
+from strings_with_arrows import *
+
+#######################################
 # CONSTANTS
 #######################################
 
@@ -19,6 +25,9 @@ class Error:
     def as_string(self):
         result = f"{self.error_name}: {self.details}\n"
         result += f"File {self.pos_start.fn}, line {self.pos_start.ln + 1}"
+        result += "\n\n" + string_with_arrows(
+            self.pos_start.ftxt, self.pos_start, self.pos_end
+        )
         return result
 
 
@@ -78,6 +87,7 @@ class Token:
     def __init__(self, type_, value=None, pos_start=None, pos_end=None):
         self.type = type_
         self.value = value
+
         if pos_start:
             self.pos_start = pos_start.copy()
             self.pos_end = pos_start.copy()
@@ -167,9 +177,9 @@ class Lexer:
             return Token(TT_FLOAT, float(num_str), pos_start, self.pos)
 
 
-########################################
+#######################################
 # NODES
-########################################
+#######################################
 
 
 class NumberNode:
@@ -199,9 +209,9 @@ class UnaryOpNode:
         return f"({self.op_tok}, {self.node})"
 
 
-#####################################
+#######################################
 # PARSE RESULT
-#####################################
+#######################################
 
 
 class ParseResult:
@@ -214,6 +224,7 @@ class ParseResult:
             if res.error:
                 self.error = res.error
             return res.node
+
         return res
 
     def success(self, node):
@@ -225,15 +236,15 @@ class ParseResult:
         return self
 
 
-#####################################
+#######################################
 # PARSER
-#####################################
+#######################################
 
 
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
-        self.tok_idx = 1
+        self.tok_idx = -1
         self.advance()
 
     def advance(
@@ -243,8 +254,6 @@ class Parser:
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
         return self.current_tok
-
-    #########################################
 
     def parse(self):
         res = self.expr()
@@ -257,6 +266,8 @@ class Parser:
                 )
             )
         return res
+
+    ###################################
 
     def factor(self):
         res = ParseResult()
@@ -286,9 +297,13 @@ class Parser:
                     InvalidSyntaxError(
                         self.current_tok.pos_start,
                         self.current_tok.pos_end,
-                        "Expected ')' ",
+                        "Expected ')'",
                     )
                 )
+
+        return res.failure(
+            InvalidSyntaxError(tok.pos_start, tok.pos_end, "Expected int or float")
+        )
 
     def term(self):
         return self.bin_op(self.factor, (TT_MUL, TT_DIV))
@@ -296,11 +311,14 @@ class Parser:
     def expr(self):
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
 
+    ###################################
+
     def bin_op(self, func, ops):
         res = ParseResult()
         left = res.register(func())
         if res.error:
             return res
+
         while self.current_tok.type in ops:
             op_tok = self.current_tok
             res.register(self.advance())
@@ -308,6 +326,7 @@ class Parser:
             if res.error:
                 return res
             left = BinOpNode(left, op_tok, right)
+
         return res.success(left)
 
 
@@ -322,7 +341,8 @@ def run(fn, text):
     tokens, error = lexer.make_tokens()
     if error:
         return None, error
-    # Geneerate AST
+
+    # Generate AST
     parser = Parser(tokens)
     ast = parser.parse()
 
