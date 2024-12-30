@@ -1,7 +1,7 @@
 import basic
 
 while True:
-    text = input("basic > ")
+    text = input("OIMG_Language > ")
     if text.strip() == "":
         continue
     result, error = basic.run("<stdin>", text)
